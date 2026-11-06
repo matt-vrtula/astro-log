@@ -1,0 +1,19 @@
+{
+  "name": "astrolog",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && firebase deploy --only hosting"
+  },
+  "dependencies": {
+    "firebase": "^13.2.0"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.35.0",
+    "vite": "^8.3.6"
+  }
+}

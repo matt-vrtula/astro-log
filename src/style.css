@@ -1,0 +1,222 @@
+:root {
+  --bg: #0b1020;
+  --surface: #151b30;
+  --surface-hover: #1f2742;
+  --border: #2a3352;
+  --text: #e6e9f2;
+  --text-muted: #9aa3bd;
+  --accent: #7c9cff;
+  --danger: #ff8a8a;
+
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- Sign-in page ---------- */
+
+.sign-in {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background:
+    radial-gradient(1px 1px at 20% 30%, #fff8, transparent),
+    radial-gradient(1px 1px at 70% 20%, #fff6, transparent),
+    radial-gradient(1.5px 1.5px at 40% 80%, #fff7, transparent),
+    radial-gradient(1px 1px at 85% 65%, #fff5, transparent),
+    radial-gradient(1px 1px at 10% 85%, #fff6, transparent),
+    radial-gradient(ellipse at top, #1a2550 0%, var(--bg) 60%);
+}
+
+.sign-in-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 40px 32px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px #0008;
+}
+
+.sign-in-card h1 {
+  margin: 0 0 8px;
+  font-size: 2rem;
+  letter-spacing: 0.02em;
+}
+
+.tagline {
+  margin: 0 0 32px;
+  color: var(--text-muted);
+}
+
+.google-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f1f1f;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.google-btn:hover {
+  background: #f1f3f4;
+}
+
+.google-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.google-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.error {
+  margin: 16px 0 0;
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+/* ---------- App header ---------- */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+#content {
+  padding: 24px;
+}
+
+/* ---------- User menu ---------- */
+
+.user-menu {
+  position: relative;
+}
+
+.avatar-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.avatar-btn:hover,
+.avatar-btn[aria-expanded="true"] {
+  border-color: var(--accent);
+}
+
+.avatar-btn:focus-visible,
+.dropdown-item:focus-visible,
+.google-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.avatar-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  min-width: 220px;
+  max-width: calc(100vw - 32px);
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px #0009;
+}
+
+.dropdown-header {
+  padding: 8px 10px 10px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dropdown-name {
+  font-weight: 600;
+}
+
+.dropdown-email {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background: var(--surface-hover);
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 12px 16px;
+  }
+}
