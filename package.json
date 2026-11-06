@@ -5,15 +5,26 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "deploy": "vite build && firebase deploy --only hosting"
+    "typecheck": "tsc --noEmit",
+    "build:catalog": "node scripts/build-catalog.mjs",
+    "deploy": "npm run build && firebase deploy"
   },
   "dependencies": {
-    "firebase": "^13.2.0"
+    "d3-geo": "3.1.1",
+    "firebase": "^13.2.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@types/d3-geo": "^3.1.1",
+    "@types/geojson": "^7946.0.16",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
     "firebase-tools": "^15.35.0",
+    "typescript": "^7.0.2",
     "vite": "^8.3.6"
   }
 }
