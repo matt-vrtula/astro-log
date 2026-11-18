@@ -3,7 +3,7 @@
 Astronomy observation log and planner: an interactive sky chart with your observations
 (notes and photos) and planned targets pinned on it.
 
-Live at https://astrolog-2e82d.web.app
+Live at https://astrolog.web.app
 
 Built with React + TypeScript (Vite) and Firebase (Hosting, Authentication with Google,
 Firestore, Storage).
