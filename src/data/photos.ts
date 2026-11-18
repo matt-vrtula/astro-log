@@ -47,18 +47,22 @@ export function validatePhoto(file: File): string | null {
   return null;
 }
 
-/** Uploads the original image and a JPEG thumbnail. `onProgress` receives bytes sent so far. */
-export async function uploadPhoto(
-  uid: string,
-  observationId: string,
-  file: File,
-  onProgress: (bytes: number) => void,
-): Promise<Photo> {
+/** Storage folder for an observation's photos. */
+export const observationPhotoFolder = (uid: string, observationId: string) => `users/${uid}/observations/${observationId}`;
+
+/** Storage folder for a piece of equipment's photo. */
+export const equipmentPhotoFolder = (uid: string, equipmentId: string) => `users/${uid}/equipment/${equipmentId}`;
+
+/**
+ * Uploads the original image and a JPEG thumbnail into `folder` (see the *PhotoFolder helpers).
+ * `onProgress` receives bytes sent so far.
+ */
+export async function uploadPhoto(folder: string, file: File, onProgress: (bytes: number) => void): Promise<Photo> {
   const error = validatePhoto(file);
   if (error) throw new Error(error);
   const id = crypto.randomUUID();
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const base = `users/${uid}/observations/${observationId}/${id}`;
+  const base = `${folder}/${id}`;
   const thumb = await makeThumbnail(file);
 
   // Progress is reported for the original only; the thumbnail is tiny in comparison.

@@ -1,14 +1,24 @@
 import type { User } from "firebase/auth";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChartControls } from "./components/ChartControls";
-import { ListIcon } from "./components/Icons";
+import { EquipmentDialog } from "./components/EquipmentDialog";
+import { CloseIcon, ListIcon } from "./components/Icons";
 import { Lightbox } from "./components/Lightbox";
 import { LocationDialog } from "./components/LocationDialog";
 import { ObjectPanel, type PanelIntent } from "./components/ObjectPanel";
 import { PlanSidebar } from "./components/PlanSidebar";
 import { SearchBox } from "./components/SearchBox";
 import { UserMenu } from "./components/UserMenu";
-import { saveUserLocation, sortPlans, useObservations, usePlans, useUserLocation } from "./data/store";
+import {
+  onWriteError,
+  saveUserLocation,
+  sortEquipment,
+  sortPlans,
+  useEquipment,
+  useObservations,
+  usePlans,
+  useUserLocation,
+} from "./data/store";
 import { usePersistentState } from "./usePersistentState";
 import { loadCatalog, type Catalog } from "./sky/catalog";
 import type { HitTarget, Pin } from "./sky/renderer";
@@ -42,10 +52,13 @@ export function App({ user }: { user: User }) {
 
   const observations = useObservations(uid);
   const plans = usePlans(uid);
+  const equipment = useEquipment(uid);
   const { location } = useUserLocation(uid);
+  const [equipmentOpen, setEquipmentOpen] = useState(false);
 
   const [selected, setSelected] = useState<SkyObject | null>(null);
   const [panelIntent, setPanelIntent] = useState<PanelIntent>(null);
+  const clearPanelIntent = useCallback(() => setPanelIntent(null), []);
   const [planOpen, setPlanOpen] = usePersistentState("astrolog.planOpen", true);
   const [mode, setMode] = usePersistentState<ChartMode>("astrolog.mode", "atlas");
   const [layers, setLayers] = usePersistentState<ChartLayers>("astrolog.layers", DEFAULT_LAYERS);
@@ -54,6 +67,10 @@ export function App({ user }: { user: User }) {
   const [locationOpen, setLocationOpen] = useState(false);
   const [lightbox, setLightbox] = useState<{ photos: Photo[]; index: number } | null>(null);
   const chartRef = useRef<SkyChartHandle>(null);
+  const [writeError, setWriteError] = useState<Error | null>(null);
+
+  // Saves don't wait for the server, so failures it reports later are shown here.
+  useEffect(() => onWriteError(setWriteError), []);
 
   useEffect(() => {
     loadCatalog().then(setCatalog, (err: Error) => setCatalogError(err.message));
@@ -68,6 +85,28 @@ export function App({ user }: { user: User }) {
   }, [live]);
 
   const sortedPlans = useMemo(() => sortPlans(plans.data), [plans.data]);
+  const sortedEquipment = useMemo(() => sortEquipment(equipment.data), [equipment.data]);
+
+  // How many observations use each piece of equipment (shown when deleting it).
+  const equipmentUsage = useMemo(() => {
+    const usage = new Map<string, number>();
+    for (const o of observations.data) {
+      if (o.equipmentId) usage.set(o.equipmentId, (usage.get(o.equipmentId) ?? 0) + 1);
+    }
+    return usage;
+  }, [observations.data]);
+
+  // New observations start with the equipment of the latest observation that recorded one,
+  // since an observing session usually logs several objects with the same telescope.
+  const defaultEquipmentId = useMemo(() => {
+    let latest: { at: number; id: string } | null = null;
+    for (const o of observations.data) {
+      if (!o.equipmentId || !equipment.data.some((e) => e.id === o.equipmentId)) continue;
+      const at = o.observedAt.getTime();
+      if (!latest || at > latest.at) latest = { at, id: o.equipmentId };
+    }
+    return latest?.id ?? null;
+  }, [observations.data, equipment.data]);
 
   const pins = useMemo<Pin[]>(() => {
     const byObject = new Map<string, Pin>();
@@ -142,7 +181,7 @@ export function App({ user }: { user: User }) {
     [sortedPlans, selected],
   );
 
-  const dataError = observations.error ?? plans.error;
+  const dataError = observations.error ?? plans.error ?? equipment.error;
 
   return (
     <div className="app">
@@ -160,13 +199,21 @@ export function App({ user }: { user: User }) {
             <span className="hide-narrow">Plan</span>
             {plans.data.length > 0 && <span className="count">{plans.data.length}</span>}
           </button>
-          <UserMenu user={user} />
+          <UserMenu user={user} onOpenEquipment={() => setEquipmentOpen(true)} />
         </div>
       </header>
 
       {dataError && (
         <div className="banner error" role="alert">
           Could not load your data: {dataError.message}
+        </div>
+      )}
+      {writeError && (
+        <div className="banner error banner-dismissible" role="alert">
+          <span>A change could not be saved: {writeError.message}</span>
+          <button type="button" className="icon-btn small" aria-label="Dismiss" onClick={() => setWriteError(null)}>
+            <CloseIcon size={14} />
+          </button>
         </div>
       )}
 
@@ -225,9 +272,13 @@ export function App({ user }: { user: User }) {
             object={selected}
             observations={selectedObservations}
             plans={selectedPlans}
+            equipment={sortedEquipment}
+            defaultEquipmentId={defaultEquipmentId}
+            onManageEquipment={() => setEquipmentOpen(true)}
             location={location}
             date={date}
             intent={panelIntent}
+            onIntentHandled={clearPanelIntent}
             onClose={() => setSelected(null)}
             onOpenPhoto={(photos, index) => setLightbox({ photos, index })}
           />
@@ -239,6 +290,15 @@ export function App({ user }: { user: User }) {
           initial={location}
           onSave={(loc) => saveUserLocation(uid, loc)}
           onClose={() => setLocationOpen(false)}
+        />
+      )}
+      {equipmentOpen && (
+        <EquipmentDialog
+          uid={uid}
+          equipment={sortedEquipment}
+          loading={equipment.loading}
+          usage={equipmentUsage}
+          onClose={() => setEquipmentOpen(false)}
         />
       )}
       {lightbox && <Lightbox photos={lightbox.photos} index={lightbox.index} onClose={() => setLightbox(null)} />}

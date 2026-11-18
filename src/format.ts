@@ -33,6 +33,36 @@ export function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
+const formatMm = (mm: number) => `${Number.isInteger(mm) ? mm : mm.toFixed(1)} mm`;
+
+/** Focal ratio, e.g. 5 for a 200 mm f/5 telescope. Null unless both values are known. */
+export function focalRatio(apertureMm: number | null, focalLengthMm: number | null): number | null {
+  return apertureMm && focalLengthMm ? focalLengthMm / apertureMm : null;
+}
+
+/** Short spec line, e.g. "200 mm · f/5 · FL 1000 mm". Empty when nothing is known. */
+export function formatEquipmentSpecs(e: { apertureMm: number | null; focalLengthMm: number | null }): string {
+  const ratio = focalRatio(e.apertureMm, e.focalLengthMm);
+  return [
+    e.apertureMm ? formatMm(e.apertureMm) : null,
+    ratio ? `f/${ratio.toFixed(1).replace(/\.0$/, "")}` : null,
+    e.focalLengthMm ? `FL ${formatMm(e.focalLengthMm)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * Parses an optional length in millimetres (accepts a decimal comma).
+ * Returns null for empty input, undefined when invalid.
+ */
+export function parseMillimetres(s: string): number | null | undefined {
+  const t = s.trim().replace(",", ".");
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n > 0 && n <= 100_000 ? n : undefined;
+}
+
 export function formatLocation(lat: number, lon: number): string {
   return `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}`;
 }

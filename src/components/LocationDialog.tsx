@@ -4,7 +4,8 @@ import { Modal } from "./Modal";
 
 interface Props {
   initial: ObserverLocation | null;
-  onSave(location: ObserverLocation): Promise<void>;
+  /** Queues the save; must not wait for the server (it may be offline). */
+  onSave(location: ObserverLocation): void;
   onClose(): void;
 }
 
@@ -35,7 +36,7 @@ export function LocationDialog({ initial, onSave, onClose }: Props) {
     );
   }
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
     const la = Number(lat), lo = Number(lon);
     if (lat.trim() === "" || !Number.isFinite(la) || la < -90 || la > 90) {
@@ -46,13 +47,11 @@ export function LocationDialog({ initial, onSave, onClose }: Props) {
       setError("Longitude must be a number between -180 and 180.");
       return;
     }
-    setBusy(true);
     try {
-      await onSave({ lat: la, lon: lo });
+      onSave({ lat: la, lon: lo });
       onClose();
     } catch (err) {
       setError(`Could not save: ${(err as Error).message}`);
-      setBusy(false);
     }
   }
 

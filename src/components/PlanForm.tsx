@@ -15,7 +15,6 @@ export function PlanForm({ uid, target, existing, onDone }: Props) {
   const [month, setMonth] = useState(existing?.month ? String(existing.month) : "");
   const [year, setYear] = useState(existing?.year ? String(existing.year) : "");
   const [priority, setPriority] = useState<Priority>(existing?.priority ?? 2);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
@@ -25,10 +24,10 @@ export function PlanForm({ uid, target, existing, onDone }: Props) {
       setError("Year must be a four-digit year.");
       return;
     }
-    setSaving(true);
     setError(null);
     try {
-      await savePlan(uid, existing?.id ?? null, target, {
+      // Not awaited: queued locally, works offline. Server-side failures are shown by the app.
+      void savePlan(uid, existing?.id ?? null, target, {
         name: name.trim() || target.objectName,
         month: month ? Number(month) : null,
         year: y,
@@ -37,7 +36,6 @@ export function PlanForm({ uid, target, existing, onDone }: Props) {
       onDone();
     } catch (err) {
       setError(`Saving failed: ${(err as Error).message}`);
-      setSaving(false);
     }
   }
 
@@ -94,10 +92,10 @@ export function PlanForm({ uid, target, existing, onDone }: Props) {
       </div>
       {error && <p className="error">{error}</p>}
       <div className="form-actions">
-        <button type="button" className="btn btn-ghost" onClick={onDone} disabled={saving}>
+        <button type="button" className="btn btn-ghost" onClick={onDone}>
           Cancel
         </button>
-        <button type="submit" className="btn btn-primary" disabled={saving}>
+        <button type="submit" className="btn btn-primary">
           {existing ? "Save" : "Add to plan"}
         </button>
       </div>

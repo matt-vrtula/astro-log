@@ -63,6 +63,13 @@ export const CameraIcon = (p: IconProps) => (
 export const FlagIcon = (p: IconProps) => (
   <Icon {...p}><path d="M4 22V4M4 4h13l-2 4 2 4H4" /></Icon>
 );
+export const TelescopeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m4 12 13-6 2 4.5L6 16.5Z" />
+    <path d="m17 6 2.5-1.2 2 4.5L19 10.5" />
+    <path d="m10 14.5 3 7.5M10 14.5 7 22" />
+  </Icon>
+);
 export const ClockIcon = (p: IconProps) => (
   <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>
 );

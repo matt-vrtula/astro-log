@@ -1,9 +1,18 @@
 import { useEffect, useState } from "react";
 import { deleteObservation, deletePlan } from "../data/store";
-import { formatDateTime, formatPlanDate } from "../format";
+import { formatDateTime, formatEquipmentSpecs, formatPlanDate } from "../format";
 import { compassPoint, formatDec, formatRA, lstDeg, raDecToAltAz } from "../sky/astro";
-import { PRIORITY_LABELS, type Observation, type ObserverLocation, type Photo, type Plan, type SkyObject, type TargetRef } from "../types";
-import { CloseIcon, EditIcon, FlagIcon, PlusIcon, TrashIcon } from "./Icons";
+import {
+  PRIORITY_LABELS,
+  type Equipment,
+  type Observation,
+  type ObserverLocation,
+  type Photo,
+  type Plan,
+  type SkyObject,
+  type TargetRef,
+} from "../types";
+import { CloseIcon, EditIcon, FlagIcon, PlusIcon, TelescopeIcon, TrashIcon } from "./Icons";
 import { ObservationForm } from "./ObservationForm";
 import { ObjectInfo } from "./ObjectInfo";
 import { PlanForm } from "./PlanForm";
@@ -15,9 +24,16 @@ interface Props {
   object: SkyObject;
   observations: Observation[];
   plans: Plan[];
+  /** The user's equipment, already sorted. */
+  equipment: Equipment[];
+  /** Preselected equipment for a new observation. */
+  defaultEquipmentId: string | null;
+  onManageEquipment(): void;
   location: ObserverLocation | null;
   date: Date;
   intent: PanelIntent;
+  /** Called once `intent` has been acted on, so it is not replayed when the panel remounts. */
+  onIntentHandled(): void;
   onClose(): void;
   onOpenPhoto(photos: Photo[], index: number): void;
 }
@@ -27,7 +43,21 @@ type Mode =
   | { type: "observation"; existing?: Observation }
   | { type: "plan"; existing?: Plan };
 
-export function ObjectPanel({ uid, object, observations, plans, location, date, intent, onClose, onOpenPhoto }: Props) {
+export function ObjectPanel({
+  uid,
+  object,
+  observations,
+  plans,
+  equipment,
+  defaultEquipmentId,
+  onManageEquipment,
+  location,
+  date,
+  intent,
+  onIntentHandled,
+  onClose,
+  onOpenPhoto,
+}: Props) {
   const [mode, setMode] = useState<Mode>({ type: "view" });
 
   // Reset when another object is selected.
@@ -35,25 +65,25 @@ export function ObjectPanel({ uid, object, observations, plans, location, date, 
 
   // Requests from outside (e.g. "edit" in the plan sidebar).
   useEffect(() => {
-    if (intent?.type === "editPlan") {
+    if (!intent) return;
+    if (intent.type === "editPlan") {
       const plan = plans.find((p) => p.id === intent.planId);
       if (plan) setMode({ type: "plan", existing: plan });
     }
+    onIntentHandled();
     // Only react to new intents, not to plan list updates.
   }, [intent]);
 
   const target: TargetRef = { objectId: object.id, objectName: object.name, ra: object.ra, dec: object.dec };
   const position = location ? raDecToAltAz(object.ra, object.dec, lstDeg(date, location.lon), location.lat) : null;
   const back = () => setMode({ type: "view" });
+  const equipmentById = new Map(equipment.map((e) => [e.id, e]));
 
-  async function removeObservation(o: Observation) {
+  function removeObservation(o: Observation) {
     const photos = o.photos.length ? ` and its ${o.photos.length} photo${o.photos.length > 1 ? "s" : ""}` : "";
     if (!confirm(`Delete the observation from ${formatDateTime(o.observedAt)}${photos}?`)) return;
-    try {
-      await deleteObservation(uid, o);
-    } catch (err) {
-      alert(`Delete failed: ${(err as Error).message}`);
-    }
+    // Not awaited: queued locally, works offline. Server-side failures are shown by the app.
+    void deleteObservation(uid, o);
   }
 
   async function removePlan(p: Plan) {
@@ -121,7 +151,15 @@ export function ObjectPanel({ uid, object, observations, plans, location, date, 
         </dl>
 
         {mode.type === "observation" && (
-          <ObservationForm uid={uid} target={target} existing={mode.existing} onDone={back} />
+          <ObservationForm
+            uid={uid}
+            target={target}
+            existing={mode.existing}
+            equipment={equipment}
+            defaultEquipmentId={defaultEquipmentId}
+            onManageEquipment={onManageEquipment}
+            onDone={back}
+          />
         )}
         {mode.type === "plan" && <PlanForm uid={uid} target={target} existing={mode.existing} onDone={back} />}
 
@@ -167,7 +205,10 @@ export function ObjectPanel({ uid, object, observations, plans, location, date, 
                 <p className="muted">No observations of {object.name} yet.</p>
               ) : (
                 <ol className="observation-list">
-                  {observations.map((o) => (
+                  {observations.map((o) => {
+                    const usedEquipment = o.equipmentId ? equipmentById.get(o.equipmentId) : undefined;
+                    const specs = usedEquipment ? formatEquipmentSpecs(usedEquipment) : "";
+                    return (
                     <li key={o.id} className="observation-card">
                       <div className="observation-head">
                         <time dateTime={o.observedAt.toISOString()}>{formatDateTime(o.observedAt)}</time>
@@ -185,6 +226,15 @@ export function ObjectPanel({ uid, object, observations, plans, location, date, 
                           </button>
                         </div>
                       </div>
+                      {usedEquipment && (
+                        <p className="observation-equipment">
+                          <TelescopeIcon size={14} />
+                          <span>
+                            {usedEquipment.name}
+                            {specs && <span className="muted"> · {specs}</span>}
+                          </span>
+                        </p>
+                      )}
                       {o.notes && <p className="observation-notes">{o.notes}</p>}
                       {o.photos.length > 0 && (
                         <div className="thumb-grid">
@@ -202,7 +252,8 @@ export function ObjectPanel({ uid, object, observations, plans, location, date, 
                         </div>
                       )}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ol>
               )}
             </section>

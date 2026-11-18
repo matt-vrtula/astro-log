@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { deletePhotoFiles, uploadPhoto, validatePhoto, ACCEPTED_IMAGE_TYPES } from "../data/photos";
+import { deletePhotoFiles, observationPhotoFolder, uploadPhoto, validatePhoto, ACCEPTED_IMAGE_TYPES } from "../data/photos";
 import { newObservationId, saveObservation } from "../data/store";
-import { formatBytes, parseLocalInputValue, toLocalInputValue } from "../format";
-import type { Observation, Photo, TargetRef } from "../types";
+import { formatBytes, formatEquipmentSpecs, parseLocalInputValue, toLocalInputValue } from "../format";
+import type { Equipment, Observation, Photo, TargetRef } from "../types";
 import { CameraIcon, CloseIcon } from "./Icons";
 
 interface Props {
@@ -10,6 +10,11 @@ interface Props {
   target: TargetRef;
   /** Observation being edited, or undefined for a new one. */
   existing?: Observation;
+  /** The user's equipment, already sorted. */
+  equipment: Equipment[];
+  /** Preselected equipment for a new observation. */
+  defaultEquipmentId: string | null;
+  onManageEquipment(): void;
   onDone(): void;
 }
 
@@ -19,9 +24,12 @@ interface NewFile {
   preview: string;
 }
 
-export function ObservationForm({ uid, target, existing, onDone }: Props) {
+export function ObservationForm({ uid, target, existing, equipment, defaultEquipmentId, onManageEquipment, onDone }: Props) {
   const [when, setWhen] = useState(toLocalInputValue(existing?.observedAt ?? new Date()));
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  // May hold the id of deleted equipment (shown as "None"); it is kept unless the user picks another.
+  const [equipmentId, setEquipmentId] = useState(existing ? existing.equipmentId : defaultEquipmentId);
+  const shownEquipmentId = equipment.some((e) => e.id === equipmentId) ? equipmentId! : "";
   const [kept, setKept] = useState<Photo[]>(existing?.photos ?? []);
   const [added, setAdded] = useState<NewFile[]>([]);
   const [saving, setSaving] = useState(false);
@@ -80,7 +88,7 @@ export function ObservationForm({ uid, target, existing, onDone }: Props) {
       const worker = async () => {
         while (next < added.length) {
           const i = next++;
-          uploaded[i] = await uploadPhoto(uid, id, added[i].file, (b) => {
+          uploaded[i] = await uploadPhoto(observationPhotoFolder(uid, id), added[i].file, (b) => {
             sent[i] = b;
             report();
           });
@@ -88,17 +96,23 @@ export function ObservationForm({ uid, target, existing, onDone }: Props) {
       };
       await Promise.all([worker(), worker()]);
 
-      await saveObservation(
+      // Not awaited: the write is queued locally and may only reach the server once back online.
+      const committed = saveObservation(
         uid,
         id,
         target,
-        { observedAt, notes: notes.trim(), photos: [...kept, ...uploadedPhotos()] },
+        { observedAt, notes: notes.trim(), photos: [...kept, ...uploadedPhotos()], equipmentId: equipmentId || null },
         !existing,
       );
 
-      // Remove photos the user deleted while editing.
+      // Remove photos the user deleted while editing, once the observation no longer references them.
       const removed = (existing?.photos ?? []).filter((p) => !kept.some((k) => k.id === p.id));
-      await Promise.all(removed.map(deletePhotoFiles)).catch((err) => console.warn("Photo cleanup failed", err));
+      if (removed.length) {
+        void committed.then(async (ok) => {
+          if (!ok) return;
+          await Promise.all(removed.map(deletePhotoFiles)).catch((err) => console.warn("Photo cleanup failed", err));
+        });
+      }
       onDone();
     } catch (err) {
       console.error(err);
@@ -117,6 +131,36 @@ export function ObservationForm({ uid, target, existing, onDone }: Props) {
         Date and time
         <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} required />
       </label>
+      {equipment.length > 0 ? (
+        <label>
+          <span>
+            Equipment <span className="muted">(optional)</span>
+          </span>
+          <select value={shownEquipmentId} onChange={(e) => setEquipmentId(e.target.value || null)} disabled={saving}>
+            <option value="">None</option>
+            {equipment.map((e) => {
+              const specs = formatEquipmentSpecs(e);
+              return (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                  {specs ? ` (${specs})` : ""}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+      ) : (
+        <div>
+          <div className="label">Equipment</div>
+          <p className="muted small equipment-hint">
+            No equipment yet.{" "}
+            <button type="button" className="link-btn" onClick={onManageEquipment}>
+              Add your telescopes
+            </button>{" "}
+            to record which one you used.
+          </p>
+        </div>
+      )}
       <label>
         Notes
         <textarea

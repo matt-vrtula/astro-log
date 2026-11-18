@@ -43,6 +43,22 @@ export interface Observation extends TargetRef {
   observedAt: Date;
   notes: string;
   photos: Photo[];
+  /** Equipment used, if any. May refer to equipment that has since been deleted. */
+  equipmentId: string | null;
+  createdAt: Date | null;
+}
+
+/** A telescope (or other instrument) the user observes with. */
+export interface Equipment {
+  id: string;
+  name: string;
+  /** Empty when not given. */
+  brand: string;
+  /** Millimetres. */
+  apertureMm: number | null;
+  /** Millimetres. */
+  focalLengthMm: number | null;
+  photo: Photo | null;
   createdAt: Date | null;
 }
 

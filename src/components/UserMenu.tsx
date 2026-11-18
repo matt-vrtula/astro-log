@@ -1,6 +1,7 @@
 import { signOut, type User } from "firebase/auth";
 import { useEffect, useRef, useState } from "react";
 import { auth } from "../firebase";
+import { TelescopeIcon } from "./Icons";
 
 function initialsOf(user: User) {
   const source = user.displayName || user.email || "?";
@@ -12,16 +13,21 @@ function initialsOf(user: User) {
     .join("");
 }
 
-export function UserMenu({ user }: { user: User }) {
+interface Props {
+  user: User;
+  onOpenEquipment(): void;
+}
+
+export function UserMenu({ user, onOpenEquipment }: Props) {
   const [open, setOpen] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const logoutRef = useRef<HTMLButtonElement>(null);
+  const firstItemRef = useRef<HTMLButtonElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    logoutRef.current?.focus();
+    firstItemRef.current?.focus();
     const onClick = (e: MouseEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
@@ -64,7 +70,20 @@ export function UserMenu({ user }: { user: User }) {
             <div className="dropdown-name">{user.displayName || "Signed in"}</div>
             <div className="dropdown-email">{user.email}</div>
           </div>
-          <button ref={logoutRef} className="dropdown-item" type="button" role="menuitem" onClick={() => signOut(auth)}>
+          <button
+            ref={firstItemRef}
+            className="dropdown-item"
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onOpenEquipment();
+            }}
+          >
+            <TelescopeIcon size={16} /> My equipment
+          </button>
+          <div className="dropdown-separator" role="separator" />
+          <button className="dropdown-item" type="button" role="menuitem" onClick={() => signOut(auth)}>
             Log out
           </button>
         </div>
